@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 Live Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style-deteccao.css') }}">
+</head>
+
+<body>
+    <nav>
+        <div class="logo"><a href="index.html">YOLOv8</a></div>
+        <div class="nav-items">
+            <a href="deteccao.html">Detecção</a>
+            <a href="sobre.html">Sobre</a>
+        </div>
+        <button class="hamburger" aria-label="Menu">☰</button>
+    </nav>
+    <div class="caixa-container">
+        <div class="video-container">
+            <img src="/video_feed" alt="Video Feed" id="video-box">
+        </div>
+        <div class="form-container">
+            <form action="/set_resolution" method="POST">
+                <label for="width">Largura:</label>
+                <input type="number" name="width" value="640">
+                <label for="height">Altura:</label>
+                <input type="number" name="height" value="480">
+                <button type="submit">Aplicar resolução</button>
+            </form>
+        </div>
+        <div class="info-panel">
+            <h2>Detections</h2>
+            <ul id="detections-list">
+                <!-- Informações das detecções serão exibidas aqui -->
+            </ul>
+        </div>
+    </div>
+</body>
+<script>
+    document.querySelector('.hamburger').addEventListener('click', () => {
+        document.querySelector('.nav-items').classList.toggle('active');
+    });
+    function updateDetections() {
+        fetch('/detections')
+            .then(response => response.json())
+            .then(data => {
+                const detectionsList = document.getElementById('detections-list');
+                detectionsList.innerHTML = '';
+
+                data.forEach(detection => {
+                    const item = document.createElement('li');
+                    item.textContent = `Class: ${detection.class}, Confidence: ${detection.confidence}`;
+                    detectionsList.appendChild(item);
+                });
+            })
+            .catch(err => console.error('Erro ao buscar detecções:', err));
+    }
+
+    // Taxa de atualização das detecções
+    setInterval(updateDetections, 2000);
+</script>
+
+</html>

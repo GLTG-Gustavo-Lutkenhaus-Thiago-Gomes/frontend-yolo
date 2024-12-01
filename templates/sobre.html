@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 Live Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style-sobre.css') }}">
+</head>
+
+<body>
+    <nav>
+        <div class="logo"><a href="index.html">YOLOv8</a></div>
+        <div class="nav-items">
+            <a href="deteccao.html">Detecção</a>
+            <a href="sobre.html">Sobre</a>
+        </div>
+        <button class="hamburger" aria-label="Menu">☰</button>
+    </nav>
+    <section class="caixa">
+        <div class="caixa-container">
+            <div class="column-left">
+                <h1>Sobre o Projeto</h1>
+                <p>
+                    Projeto acadêmico baseado em detecção de instrumentos hospitalares, onde foi utilizado o YOLOv8
+                    para detectar os objetos.
+                </p>
+            </div>
+        </div>
+    </section>
+</body>
+<script>
+    document.querySelector('.hamburger').addEventListener('click', () => {
+        document.querySelector('.nav-items').classList.toggle('active');
+    });
+    document.addEventListener("DOMContentLoaded", () => {
+        const links = document.querySelectorAll(".navbar-menu a");
+        links.forEach(link => {
+            if (link.href === window.location.href) {
+                link.style.backgroundColor = "#575757";
+                link.style.borderRadius = "5px";
+            }
+        });
+    });
+</script>
+
+</html>
