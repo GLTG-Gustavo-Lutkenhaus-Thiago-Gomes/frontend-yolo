@@ -1,0 +1,8 @@
+.git
+.tmp
+.swp
+.env
+README.md
+log
+
+__pycache__
