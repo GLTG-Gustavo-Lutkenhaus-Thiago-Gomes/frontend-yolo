@@ -72,7 +72,7 @@
 
             console.log("Enviando frame para o servidor...");
             socket.emit('frame', frame);
-        }, 1000);
+        }, 900);
     }
 
     socket.on('processed_frame', (processedFrame) => {

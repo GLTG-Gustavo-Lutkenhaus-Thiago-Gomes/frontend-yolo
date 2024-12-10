@@ -4,5 +4,9 @@
 .env
 README.md
 log
-
+venv/
+*.pyc
+*.pyo
+*.git
 __pycache__
+__pycache__/
