@@ -40,7 +40,7 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    const socket = io('http://127.0.0.1:5000');
+    const socket = io('https://realtime-object-detection.xyz');
 
     navigator.mediaDevices.getUserMedia({ video: true })
         .then((stream) => {
