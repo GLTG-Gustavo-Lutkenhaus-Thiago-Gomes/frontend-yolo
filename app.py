@@ -1,64 +1,49 @@
-from flask import Flask, Response, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, jsonify
+from flask_socketio import SocketIO
 import cv2
+import numpy as np
+import base64
 from ultralytics import YOLO
-from time import sleep, time
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 model = YOLO('./model/yolov8n.pt')
 
-cv2.setNumThreads(1)
-camera = cv2.VideoCapture(0)
-camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-
 latest_detections = []
-MAX_FPS = 3
-frame_interval = 1.0 / MAX_FPS
 
-def generate_frames():
-    global latest_detections
-    last_time = time()
+@socketio.on('frame')
+def handle_frame(data):
+    if not data or ',' not in data:
+        print("Frame recebido está vazio ou inválido. Dado recebido:", data)
+        return
+    
+    encoded_data = data.split(',')[1]
+    if not encoded_data.strip():
+        print("Dados base64 estão vazios.")
+        return
 
-    while True:
-        if not camera.isOpened():
-            print("Erro: A câmera não pode ser acessada. Verifique o índice ou a conexão.")
+    try:
+        frame = np.frombuffer(base64.b64decode(encoded_data), dtype=np.uint8)
+        frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
 
-        success, frame = camera.read()
-        if not success:
-            break
+        if frame is None:
+            print("O OpenCV não conseguiu decodificar o frame.")
+            return
 
-        current_time = time()
-        if current_time - last_time < frame_interval:
-            sleep(frame_interval - (current_time - last_time))
-            continue
-        last_time = current_time
-
-        results = model(frame, imgsz=640, conf=0.7)
-        detections = []
-        for result in results:
-            for box in result.boxes:
-                cls = int(box.cls[0]) if box.cls is not None else None
-                conf = float(box.conf[0]) if box.conf is not None else None
-                if cls is not None and conf is not None:
-                    detections.append({
-                        "class": model.names[cls],
-                        "confidence": round(conf, 2)
-                    })
-            annotated_frame = result.plot()
-
-        latest_detections = detections
+        results = model(frame, imgsz=640, conf=0.85)
+        annotated_frame = results[0].plot()
 
         _, buffer = cv2.imencode('.jpg', annotated_frame)
-        frame = buffer.tobytes()
-
-        yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-@app.route('/video_feed')
-def video_feed():
-    sleep(1)
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+        processed_frame = base64.b64encode(buffer).decode('utf-8')
+        socketio.emit('processed_frame', processed_frame)
+    except Exception as e:
+        print(f"Erro ao processar frame: {e}")
 
 @app.route('/detections')
 def get_detections():
@@ -69,10 +54,6 @@ def get_detections():
 def get_deteccao():
     return render_template('deteccao.html')
 
-@app.route('/contato.html')
-def get_contato():
-    return render_template('contato.html')
-
 @app.route('/sobre.html')
 def get_sobre():
     return render_template('sobre.html')
@@ -81,13 +62,5 @@ def get_sobre():
 def index():
     return render_template('index.html')
 
-@app.route('/set_resolution', methods=['POST'])
-def set_resolution():
-    width = int(request.form.get('width', 640))
-    height = int(request.form.get('height', 480))
-    camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    return redirect(url_for('get_deteccao'))
-
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000)

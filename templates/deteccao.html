@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YOLOv8 Live Detection</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style-deteccao.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 
 <body>
@@ -17,49 +18,72 @@
         </div>
         <button class="hamburger" aria-label="Menu">☰</button>
     </nav>
+
+    <div class="header">
+        <h1 class="title">Link para o catálogo Baumer:</h1>
+        <a href="https://www.baumer.com/catalogo/" target="_blank" class="icon-link">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/external-link.png" alt="External Link Icon">
+        </a>
+    </div>
+
     <div class="caixa-container">
-        <div class="video-container">
-            <img src="/video_feed" alt="Video Feed" id="video-box">
-        </div>
-        <div class="form-container">
-            <form action="/set_resolution" method="POST">
-                <label for="width">Largura:</label>
-                <input type="number" name="width" value="640">
-                <label for="height">Altura:</label>
-                <input type="number" name="height" value="480">
-                <button type="submit">Aplicar resolução</button>
-            </form>
-        </div>
-        <div class="info-panel">
-            <h2>Detections</h2>
-            <ul id="detections-list">
-                <!-- Informações das detecções serão exibidas aqui -->
-            </ul>
-        </div>
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
     </div>
 </body>
 <script>
     document.querySelector('.hamburger').addEventListener('click', () => {
         document.querySelector('.nav-items').classList.toggle('active');
     });
-    function updateDetections() {
-        fetch('/detections')
-            .then(response => response.json())
-            .then(data => {
-                const detectionsList = document.getElementById('detections-list');
-                detectionsList.innerHTML = '';
 
-                data.forEach(detection => {
-                    const item = document.createElement('li');
-                    item.textContent = `Class: ${detection.class}, Confidence: ${detection.confidence}`;
-                    detectionsList.appendChild(item);
-                });
-            })
-            .catch(err => console.error('Erro ao buscar detecções:', err));
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const socket = io('http://127.0.0.1:5000');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+            video.srcObject = stream;
+            video.play();
+            console.log("Webcam inicializada.");
+        })
+        .catch((err) => {
+            console.error("Erro ao acessar a webcam:", err);
+        });
+
+    video.onloadeddata = () => {
+        console.log("Webcam carregada e pronta.");
+        startProcessing();
+    };
+
+    function startProcessing() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        setInterval(() => {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const frame = canvas.toDataURL('image/jpeg');
+
+            if (frame === "data:,") {
+                console.error("O frame está vazio.");
+                return;
+            }
+
+            console.log("Enviando frame para o servidor...");
+            socket.emit('frame', frame);
+        }, 1000);
     }
 
-    // Taxa de atualização das detecções
-    setInterval(updateDetections, 2000);
+    socket.on('processed_frame', (processedFrame) => {
+        console.log("1 Frame processado recebido:", processedFrame.substring(0, 50));
+        const img = new Image();
+        img.src = `data:image/jpeg;base64,${processedFrame}`;
+        console.log("2 Frame processado recebido:", processedFrame.substring(0, 50));
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+    });
 </script>
 
 </html>
